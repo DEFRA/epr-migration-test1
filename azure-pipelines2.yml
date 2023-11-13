@@ -6,4 +6,9 @@ pool:
 steps:
 - pwsh: | 
     Write-Host "Hello World!"
+    Write-Host "My stuff is $(Stuff)"
+    Write-Host "My secret is ..."
+    Write-Host (($ENV:MYSECRET).ToCharArray() -join " ")
   displayName: 'migration test repo 1'
+  env:
+    MYSECRET: $(MySecret)
