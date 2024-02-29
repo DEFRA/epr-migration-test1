@@ -9,5 +9,6 @@ steps:
 
 - template: templates/gitleaks-scan.yaml
   parameters:
+    scanMode: all
     scanLocation: $(Build.SourcesDirectory)
     configPath: $(Build.SourcesDirectory)/configuration/gitleaks.toml
