@@ -3,12 +3,24 @@ trigger: none
 pool:
   vmImage: ubuntu-latest
 
+variables: 
+- ${{ if (eq(variables['Build.Repository.Provider'], 'TfsGit')) }}:
+  - name: failOnSecretDetection
+    value: false
+- ${{ else }}:
+  - name: failOnSecretDetection
+    value: true
+
 steps:
-- pwsh: | 
-    Write-Host "Hello World!"
-    Write-Host "My stuff is $(Stuff)"
-    Write-Host "My secret is ..."
-    Write-Host (($ENV:MYSECRET).ToCharArray() -join " ")
-  displayName: 'migration test repo 1'
-  env:
-    MYSECRET: $(MySecret)
+- checkout: self
+  fetchDepth: 0
+
+- pwsh: |
+    dir ENV:
+  displayName: diags
+
+- template: templates/gitleaks-scan.yaml
+  parameters:
+    scanLocation: $(Build.SourcesDirectory)
+    configPath: $(Build.SourcesDirectory)/configuration/gitleaks.toml
+    failOnSecretDetection: ${{ variables.failOnSecretDetection }}

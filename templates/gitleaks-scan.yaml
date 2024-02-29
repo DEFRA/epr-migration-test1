@@ -1,0 +1,85 @@
+parameters:
+  - name: scanLocation
+    type: string
+  - name: scanMode
+    type: string
+    values:
+    - all
+    - nogit
+    default: all
+  - name: configPath
+    type: string
+  - name: failOnSecretDetection
+    type: boolean
+    default: true
+
+steps:
+  - pwsh: |
+      [System.IO.DirectoryInfo]$repoRootDir = '${{ parameters.scanLocation }}'
+      [string]$ignoreFilename = '.gitleaksignore'
+      Write-Host "Searching for $ignoreFilename under $($repoRootDir.FullName)"
+
+      [array]$gitleaksIgnoreFiles = @(dir $repoRootDir.FullName -Recurse -Force | Where-Object -FilterScript { $_.Name -eq $ignoreFilename })
+
+      if ($gitleaksIgnoreFiles.Count -eq 0) {
+        Write-Host "Found no $ignoreFilename files"
+      } else {
+        if ($gitleaksIgnoreFiles.Count -eq 1) {
+          Write-Host "Found 1 $ignoreFilename file:"
+        } else {
+          Write-Warning "Found $($gitleaksIgnoreFiles.Count) $ignoreFilename files when at most 1 was expected:"
+        }
+
+        $gitLeaksIgnoreFiles | ForEach-Object -Process { 
+          Write-Host $_.FullName 
+        }
+
+        $gitLeaksIgnoreFiles | ForEach-Object -Process { 
+          [array]$output = @()
+          [array]$lines = Get-Content -Path $_.FullName
+
+          Write-Host "`nOriginal contents of $($_.FullName):"
+          $lines | ForEach-Object -Process { Write-Host $_ }
+
+          Write-Host "`nNew contents of $($_.FullName):"
+
+          foreach($line in $lines) {
+            [string]$trimmed = $line.Trim()
+            [string]$outputLine = ''
+            if ($trimmed.StartsWith('#')) {
+              $outputLine = $line
+            } elseif ([string]::IsNullOrWhitespace($trimmed)) {
+              $outputLine = $line
+            } else {
+              [array]$parts = $line.Split(':')
+              # if it has 3 parts, it's a nogit entry with a relative path
+              # if it has 4 parts, it's a full scan with a commit hash
+              if ($parts.Length -eq 3) {
+                $parts[0] = Join-Path -Path $repoRootDir -ChildPath $parts[0]
+                $outputLine = $parts -Join ':'
+              }
+              else {
+                $outputLine = $line
+              }
+            }
+            Write-Host $outputLine
+            $output += $outputLine
+          }
+
+          $output | Set-Content -Path $_.FullName -Force
+
+          Write-Host "`n$($_.FullName) updated."
+        }
+      }
+    displayName: Update gitleaksignore file
+
+  - task: Gitleaks@2
+    inputs:
+      scanmode: ${{ parameters.scanMode }}
+      scanlocation: '${{ parameters.scanLocation }}'
+      configtype: 'custom'
+      configfile: '${{ parameters.configPath }}'
+      redact: false
+      verbose: true
+      taskfail: ${{ parameters.failOnSecretDetection }}
+    displayName: Gitleaks Scan
