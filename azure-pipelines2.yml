@@ -4,7 +4,7 @@ pool:
   vmImage: ubuntu-latest
 
 variables: 
-- ${{ if (eq(variables['Build.Repository.Provider'], 'TfsGit')) }}:
+- ${{ if eq( variables['Build.Repository.Provider'], 'TfsGit') }}:
   - name: failOnSecretDetection
     value: false
 - ${{ else }}:
