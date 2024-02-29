@@ -9,9 +9,6 @@ parameters:
     default: all
   - name: configPath
     type: string
-  - name: failOnSecretDetection
-    type: boolean
-    default: true
 
 steps:
   - pwsh: |
@@ -73,6 +70,14 @@ steps:
       }
     displayName: Update gitleaksignore file
 
+  - pwsh: |
+      [bool]$failOnSecretDetection = ('$(Build.Repository.Provider)' -ne 'TfsGit') 
+      [string]$failOnSecretDetectionString = $failOnSecretDetection ? "true" : "false"
+      Write-Host "failOnSecretDetection=$failOnSecretDetection"
+      Write-Host "failOnSecretDetectionString=$failOnSecretDetectionString"
+      Write-Host "##vso[task.setvariable variable=failOnSecretDetection]$failOnSecretDetection"
+    displayName: set failOnSecretDetection
+    
   - task: Gitleaks@2
     inputs:
       scanmode: ${{ parameters.scanMode }}
@@ -81,5 +86,5 @@ steps:
       configfile: '${{ parameters.configPath }}'
       redact: false
       verbose: true
-      taskfail: ${{ parameters.failOnSecretDetection }}
+      taskfail: $(failOnSecretDetection)
     displayName: Gitleaks Scan

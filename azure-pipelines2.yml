@@ -3,24 +3,11 @@ trigger: none
 pool:
   vmImage: ubuntu-latest
 
-variables: 
-- ${{ if eq( variables['Build.Repository.Provider'], 'TfsGit') }}:
-  - name: failOnSecretDetection
-    value: false
-- ${{ else }}:
-  - name: failOnSecretDetection
-    value: true
-
 steps:
 - checkout: self
   fetchDepth: 0
-
-- pwsh: |
-    dir ENV:
-  displayName: diags
 
 - template: templates/gitleaks-scan.yaml
   parameters:
     scanLocation: $(Build.SourcesDirectory)
     configPath: $(Build.SourcesDirectory)/configuration/gitleaks.toml
-    failOnSecretDetection: ${{ variables.failOnSecretDetection }}
