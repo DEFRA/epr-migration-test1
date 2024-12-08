@@ -1,0 +1,27 @@
+name: Trigger ADO Pipeline
+
+on:
+  push: 
+    branches: [ "*" ]
+  pull_request:
+    branches: [ "*" ]
+
+jobs:
+  trigger_pipeline:
+    runs-on: ubuntu-latest
+
+    steps:      
+      - name: 'Checkout Git Repository'
+        uses: actions/checkout@v4
+
+      - name: 'Run ADO Pipeline Build'
+        shell: pwsh
+        env:
+          AZURE_DEVOPS_EXT_PAT: ${{ secrets.ADO_ACCESS_TOKEN }}
+        run: |
+          $scriptPath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "pwsh/trigger-build.ps1"
+          & $scriptPath `
+            -OrganizationUrl '${{ vars.ADO_ORGANISATION_URL }}' `
+            -ProjectName '${{ vars.ADO_PROJECT_NAME }}' `
+            -PipelineDefinitionId '${{ vars.ADO_PIPELINE_DEFINITION_ID }}' `
+            -Branch '${{ github.event.pull_request.head.ref }}'
